@@ -15,7 +15,10 @@ function TabsList({
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
-      className={cn("flex gap-7 overflow-x-auto border-b", className)}
+      className={cn(
+        "flex [scrollbar-width:none] gap-7 overflow-x-auto border-b",
+        className,
+      )}
       {...props}
     />
   );

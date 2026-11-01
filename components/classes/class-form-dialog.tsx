@@ -113,12 +113,9 @@ function ClassForm({ classroom, onDone }: ClassFormProps) {
         control={control}
         name="description"
         label="Mô tả"
-        placeholder="Mô tả ngắn về lớp học (không bắt buộc)"
         hint={
           <p className="text-xs text-muted-foreground">
-            {classroom
-              ? "Xóa trống để gỡ mô tả"
-              : `${description.length} / ${CLASS_DESCRIPTION_MAX_LENGTH} ký tự`}
+            {description.length} / {CLASS_DESCRIPTION_MAX_LENGTH} ký tự
           </p>
         }
       />

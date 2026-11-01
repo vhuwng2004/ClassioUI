@@ -46,7 +46,7 @@ export function SelectMenu<T extends string>({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align={align}
-        className={size === "sm" ? "w-20 min-w-20" : "w-max min-w-40"}
+        className={size === "sm" ? "w-max min-w-20" : "w-max min-w-40"}
       >
         <DropdownMenuRadioGroup
           value={value}

@@ -14,7 +14,9 @@ interface QueryStateProps {
     refetch: () => unknown;
   };
   isEmpty: boolean;
-  emptyMessage: string;
+  emptyMessage?: string;
+  /** Thay `emptyMessage` khi trạng thái rỗng cần hướng dẫn hoặc nút hành động. */
+  empty?: ReactNode;
 }
 
 function Message({ children }: { children: ReactNode }) {
@@ -26,7 +28,12 @@ function Message({ children }: { children: ReactNode }) {
 }
 
 /** Trạng thái đang tải, lỗi hoặc rỗng. Có dữ liệu thì không hiện gì. Lỗi báo bằng toast. */
-export function QueryState({ query, isEmpty, emptyMessage }: QueryStateProps) {
+export function QueryState({
+  query,
+  isEmpty,
+  emptyMessage,
+  empty,
+}: QueryStateProps) {
   const failure = query.isError ? query.error : null;
 
   useEffect(() => {
@@ -48,5 +55,6 @@ export function QueryState({ query, isEmpty, emptyMessage }: QueryStateProps) {
     );
   }
 
-  return isEmpty ? <Message>{emptyMessage}</Message> : null;
+  if (!isEmpty) return null;
+  return empty ?? <Message>{emptyMessage}</Message>;
 }

@@ -4,8 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   ArrowDownWideNarrowIcon,
+  CopyIcon,
   ListFilterIcon,
   UserPlusIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -16,6 +18,7 @@ import { DialogForm } from "@/components/form/dialog-form";
 import { EmailField } from "@/components/form/fields";
 import { SelectMenu } from "@/components/form/select-menu";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Pagination } from "@/components/layout/pagination";
 import { QueryState } from "@/components/layout/query-state";
 import { Button } from "@/components/ui/button";
@@ -41,13 +44,14 @@ import {
   type AddStudentValues,
 } from "@/lib/validations/classes";
 
+import { copyJoinCode } from "./join-code";
 import { MemberIdentity } from "./member-identity";
 
 type StudentFilter = "ACTIVE" | "ALL";
 
 const FILTER_OPTIONS: { value: StudentFilter; label: string }[] = [
   { value: "ACTIVE", label: "Đang học" },
-  { value: "ALL", label: "Tất cả (gồm đã xóa)" },
+  { value: "ALL", label: "Tất cả" },
 ];
 
 const SORT_OPTIONS = [
@@ -66,9 +70,14 @@ interface ClassStudentsTabProps {
   classId: number;
   /** false khi lớp đã lưu trữ: vẫn xem được nhưng khoá mọi thao tác ghi. */
   editable: boolean;
+  joinCode: string | null;
 }
 
-export function ClassStudentsTab({ classId, editable }: ClassStudentsTabProps) {
+export function ClassStudentsTab({
+  classId,
+  editable,
+  joinCode,
+}: ClassStudentsTabProps) {
   const refreshClasses = useRefreshClasses();
   const [filter, setFilter] = useState<StudentFilter>("ALL");
   const [sort, setSort] = useState(SORT_OPTIONS[0].value);
@@ -107,12 +116,70 @@ export function ClassStudentsTab({ classId, editable }: ClassStudentsTabProps) {
     toast.success("Đã xóa học sinh khỏi lớp.");
   };
 
+  // Chỉ lọc "Tất cả" mới chắc lớp không có ai: "Đang học" rỗng vẫn có thể còn học sinh đã xóa.
+  const noStudents =
+    filter === "ALL" &&
+    students.data?.totalElements === 0 &&
+    !students.isPlaceholderData;
+  const inviteCode = editable ? joinCode : null;
+
+  if (noStudents) {
+    return (
+      <>
+        <Card>
+          <EmptyState
+            icon={UsersIcon}
+            title="Lớp chưa có học sinh"
+            description={
+              inviteCode && (
+                <>
+                  Gửi mã{" "}
+                  <span className="font-semibold text-foreground">
+                    {inviteCode}
+                  </span>{" "}
+                  cho học sinh để tham gia.
+                </>
+              )
+            }
+            action={
+              editable && (
+                <>
+                  {inviteCode && (
+                    <Button
+                      variant="outline"
+                      onClick={() => copyJoinCode(inviteCode)}
+                    >
+                      <CopyIcon />
+                      Sao chép mã
+                    </Button>
+                  )}
+                  <Can permission={PERMISSIONS.STUDENT_MANAGE}>
+                    <Button onClick={() => setAdding(true)}>
+                      <UserPlusIcon />
+                      Thêm học sinh
+                    </Button>
+                  </Can>
+                </>
+              )
+            }
+          />
+        </Card>
+        <AddStudentDialog
+          classId={classId}
+          open={adding}
+          onOpenChange={setAdding}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SelectMenu
           label="Lọc học sinh"
           icon={ListFilterIcon}
+          size="sm"
           align="start"
           options={FILTER_OPTIONS}
           value={filter}
@@ -122,12 +189,17 @@ export function ClassStudentsTab({ classId, editable }: ClassStudentsTabProps) {
           <SelectMenu
             label="Sắp xếp"
             icon={ArrowDownWideNarrowIcon}
+            size="sm"
             options={SORT_OPTIONS}
             value={sort}
             onChange={handleSortChange}
           />
           <Can permission={PERMISSIONS.STUDENT_MANAGE}>
-            <Button disabled={!editable} onClick={() => setAdding(true)}>
+            <Button
+              size="sm"
+              disabled={!editable}
+              onClick={() => setAdding(true)}
+            >
               <UserPlusIcon />
               Thêm học sinh
             </Button>
@@ -201,7 +273,7 @@ export function ClassStudentsTab({ classId, editable }: ClassStudentsTabProps) {
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
         title={`Xóa “${removing?.fullName}” khỏi lớp?`}
-        description="Học sinh sẽ không còn thấy lớp này. Họ có thể xin vào lại bằng mã tham gia."
+        description="Học sinh sẽ không còn thấy lớp này."
         confirmLabel="Xóa khỏi lớp"
         destructive
         onConfirm={handleRemove}
@@ -223,10 +295,7 @@ function AddStudentDialog({
 }: AddStudentDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        title="Thêm học sinh"
-        description="Thêm trực tiếp bằng email, không cần học sinh gửi yêu cầu."
-      >
+      <DialogContent title="Thêm học sinh">
         <AddStudentForm classId={classId} onDone={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>

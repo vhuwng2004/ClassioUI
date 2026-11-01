@@ -5,6 +5,7 @@ import {
   ArchiveIcon,
   ArrowLeftIcon,
   CheckIcon,
+  EllipsisIcon,
   PencilIcon,
   RotateCcwIcon,
   TriangleAlertIcon,
@@ -15,9 +16,15 @@ import { toast } from "sonner";
 
 import { Can } from "@/components/auth/guards";
 import { QueryState } from "@/components/layout/query-state";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClassroom, useRefreshClasses } from "@/hooks/use-classroom";
 import {
@@ -35,7 +42,7 @@ import { ClassRequestsTab } from "./class-requests-tab";
 import { ClassStaffTab, useClassStaff } from "./class-staff-tab";
 import { ClassStatusBadge } from "./class-status-badge";
 import { ClassStudentsTab } from "./class-students-tab";
-import { JoinCodeCard } from "./join-code-card";
+import { JoinCodePanel } from "./join-code-panel";
 
 export function ClassDetail({ classId }: { classId: number }) {
   const classroom = useClassroom(classId);
@@ -66,6 +73,8 @@ function ClassContent({ classroom }: { classroom: ClassroomResponse }) {
   const { id, name, description, status, joinCode } = classroom;
   const active = status === "ACTIVE";
   const canReviewRequests = can(PERMISSIONS.JOIN_REQUEST_REVIEW);
+  const canEdit = can(PERMISSIONS.CLASS_EDIT, classroom);
+  const canArchive = can(PERMISSIONS.CLASS_ARCHIVE, classroom);
   const refreshClasses = useRefreshClasses();
   const [dialog, setDialog] = useState<"edit" | "archive" | null>(null);
 
@@ -110,10 +119,6 @@ function ClassContent({ classroom }: { classroom: ClassroomResponse }) {
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertTitle>Lớp đang chờ quản trị viên duyệt.</AlertTitle>
-          <AlertDescription>
-            Sau khi được duyệt mới có thể sửa thông tin, thêm thành viên và nhận
-            học sinh tham gia.
-          </AlertDescription>
         </Alert>
       )}
 
@@ -121,43 +126,57 @@ function ClassContent({ classroom }: { classroom: ClassroomResponse }) {
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertTitle>Lớp đã được lưu trữ — chỉ xem.</AlertTitle>
-          <AlertDescription>
-            Mọi thao tác ghi bị khóa.
-            {can(PERMISSIONS.CLASS_RESTORE, classroom) &&
-              " Bạn có thể khôi phục lớp."}
-          </AlertDescription>
         </Alert>
       )}
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="min-w-0 text-2xl leading-8 font-bold tracking-[-0.3px] break-words">
-              {name}
-            </h1>
+      {/* Tỉ lệ 2/8 từ `xl`; hẹp hơn thì cột trái quá chật nên phần thông tin nằm trên bảng. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(14rem,1fr)_minmax(0,4fr)] xl:items-start">
+        <Card className="flex flex-col gap-4 p-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 xl:flex-col xl:items-stretch xl:gap-4">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="min-w-0 text-xl leading-7 font-bold tracking-[-0.3px] break-words">
+                {name}
+              </h1>
+              {(canEdit || canArchive) && (
+                // modal={false}: menu đóng lại trước khi mở hộp thoại, tránh khoá con trỏ.
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Thao tác với lớp ${name}`}
+                      className="text-muted-foreground"
+                    >
+                      <EllipsisIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {canEdit && (
+                      <DropdownMenuItem onSelect={() => setDialog("edit")}>
+                        <PencilIcon />
+                        Sửa thông tin
+                      </DropdownMenuItem>
+                    )}
+                    {canArchive && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => setDialog("archive")}
+                      >
+                        <ArchiveIcon />
+                        Lưu trữ
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <ClassStatusBadge status={status} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {description ?? "Chưa có mô tả"}
-          </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Can permission={PERMISSIONS.CLASS_EDIT} classroom={classroom}>
-              <Button variant="outline" onClick={() => setDialog("edit")}>
-                <PencilIcon />
-                Sửa thông tin
-              </Button>
-            </Can>
-            <Can permission={PERMISSIONS.CLASS_ARCHIVE} classroom={classroom}>
-              <Button
-                variant="destructive-outline"
-                onClick={() => setDialog("archive")}
-              >
-                <ArchiveIcon />
-                Lưu trữ
-              </Button>
-            </Can>
+            <p className="text-sm break-words text-muted-foreground">
+              {description ?? "Chưa có mô tả"}
+            </p>
             <Can permission={PERMISSIONS.CLASS_APPROVE} classroom={classroom}>
               <Button
+                size="sm"
                 disabled={approve.isPending}
                 onClick={() => approve.mutate()}
               >
@@ -167,6 +186,7 @@ function ClassContent({ classroom }: { classroom: ClassroomResponse }) {
             </Can>
             <Can permission={PERMISSIONS.CLASS_RESTORE} classroom={classroom}>
               <Button
+                size="sm"
                 disabled={restore.isPending}
                 onClick={() => restore.mutate()}
               >
@@ -175,48 +195,52 @@ function ClassContent({ classroom }: { classroom: ClassroomResponse }) {
               </Button>
             </Can>
           </div>
-        </div>
-        {joinCode && (
-          <JoinCodeCard
-            classId={id}
-            code={joinCode}
-            canRotate={can(PERMISSIONS.JOIN_CODE_ROTATE, classroom)}
-          />
-        )}
-      </div>
-
-      <Tabs defaultValue="students">
-        <TabsList>
-          <TabsTrigger
-            value="students"
-            count={studentCount.data?.totalElements}
-          >
-            Học sinh
-          </TabsTrigger>
-          {canReviewRequests && (
-            <TabsTrigger
-              value="requests"
-              count={requestCount.data?.totalElements}
-            >
-              Yêu cầu tham gia
-            </TabsTrigger>
+          {joinCode && (
+            <JoinCodePanel
+              classId={id}
+              code={joinCode}
+              canRotate={can(PERMISSIONS.JOIN_CODE_ROTATE, classroom)}
+            />
           )}
-          <TabsTrigger value="staff" count={staffCount}>
-            Giáo viên &amp; trợ giảng
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="students">
-          <ClassStudentsTab classId={id} editable={active} />
-        </TabsContent>
-        {canReviewRequests && (
-          <TabsContent value="requests">
-            <ClassRequestsTab classId={id} editable={active} />
+        </Card>
+
+        <Tabs defaultValue="students" className="min-w-0">
+          <TabsList>
+            <TabsTrigger
+              value="students"
+              count={studentCount.data?.totalElements}
+            >
+              Học sinh
+            </TabsTrigger>
+            {canReviewRequests && (
+              <TabsTrigger
+                value="requests"
+                count={requestCount.data?.totalElements}
+              >
+                Yêu cầu tham gia
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="staff" count={staffCount}>
+              Giáo viên &amp; trợ giảng
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="students">
+            <ClassStudentsTab
+              classId={id}
+              editable={active}
+              joinCode={joinCode}
+            />
           </TabsContent>
-        )}
-        <TabsContent value="staff">
-          <ClassStaffTab classId={id} editable={active} />
-        </TabsContent>
-      </Tabs>
+          {canReviewRequests && (
+            <TabsContent value="requests">
+              <ClassRequestsTab classId={id} editable={active} />
+            </TabsContent>
+          )}
+          <TabsContent value="staff">
+            <ClassStaffTab classId={id} editable={active} />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       <ClassFormDialog
         open={dialog === "edit"}

@@ -256,7 +256,6 @@ function NewPasswordStep({
           required
           autoFocus
           autoComplete="new-password"
-          placeholder="Nhập mật khẩu mới"
           hint={<PasswordRules value={newPassword} compact />}
         />
 

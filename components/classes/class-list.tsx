@@ -95,7 +95,6 @@ export function ClassList() {
     <div className="space-y-5">
       <PageHeading
         title="Lớp học"
-        description="Quản lý các lớp bạn đang phụ trách."
         action={
           <Can permission={PERMISSIONS.CLASS_CREATE}>
             <Button onClick={() => setCreating(true)}>

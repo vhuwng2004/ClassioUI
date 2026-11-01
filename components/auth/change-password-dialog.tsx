@@ -35,7 +35,7 @@ export function ChangePasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title="Đổi mật khẩu"
-        description="Sau khi đổi, bạn sẽ được đăng xuất khỏi mọi thiết bị và cần đăng nhập lại."
+        description="Sau khi đổi, bạn sẽ được đăng xuất khỏi mọi thiết bị."
       >
         <ChangePasswordForm />
       </DialogContent>

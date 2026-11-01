@@ -4,7 +4,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useRefreshClasses } from "@/hooks/use-classroom";
 import { classApi, type ClassroomResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth/auth-provider";
@@ -35,7 +35,7 @@ export function ArchiveClassDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Lưu trữ lớp “${classroom.name}”?`}
-      description="Lớp sẽ chuyển sang chế độ chỉ xem. Dữ liệu và tên lớp được giữ nguyên."
+      description="Lớp sẽ chuyển sang chế độ chỉ xem."
       confirmLabel="Lưu trữ lớp"
       destructive
       onConfirm={handleArchive}
@@ -44,9 +44,6 @@ export function ArchiveClassDialog({
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertTitle>Giáo viên không thể khôi phục lớp đã lưu trữ.</AlertTitle>
-          <AlertDescription>
-            Chỉ quản trị viên làm được việc này.
-          </AlertDescription>
         </Alert>
       )}
     </ConfirmDialog>

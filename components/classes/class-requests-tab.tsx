@@ -1,9 +1,10 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon, InboxIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/layout/empty-state";
 import { Pagination } from "@/components/layout/pagination";
 import { QueryState } from "@/components/layout/query-state";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,14 @@ export function ClassRequestsTab({ classId, editable }: ClassRequestsTabProps) {
     },
   });
 
+  if (requests.data?.totalElements === 0) {
+    return (
+      <Card>
+        <EmptyState icon={InboxIcon} title="Chưa có yêu cầu tham gia nào" />
+      </Card>
+    );
+  }
+
   return (
     <Card className="overflow-hidden">
       <DataTable
@@ -83,7 +92,7 @@ export function ClassRequestsTab({ classId, editable }: ClassRequestsTabProps) {
               />
             </td>
             <td className="pr-4 text-muted-foreground">
-              Gửi lúc {formatDateTime(request.joinedAt)}
+              {formatDateTime(request.joinedAt)}
             </td>
             <td className="pr-7">
               <div className="flex justify-end gap-2">
@@ -113,11 +122,7 @@ export function ClassRequestsTab({ classId, editable }: ClassRequestsTabProps) {
           </DataRow>
         ))}
       </DataTable>
-      <QueryState
-        query={requests}
-        isEmpty={requests.data?.content.length === 0}
-        emptyMessage="Chưa có yêu cầu tham gia nào."
-      />
+      <QueryState query={requests} isEmpty={false} />
       {requests.data && requests.data.totalElements > PAGE_SIZE_OPTIONS[0] && (
         <Pagination
           data={requests.data}

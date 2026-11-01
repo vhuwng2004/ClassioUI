@@ -39,10 +39,7 @@ export function EditProfileDialog({
 }: EditProfileDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        title="Sửa hồ sơ"
-        description="Email và vai trò không thể thay đổi tại đây."
-      >
+      <DialogContent title="Sửa hồ sơ">
         <EditProfileForm user={user} onDone={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>

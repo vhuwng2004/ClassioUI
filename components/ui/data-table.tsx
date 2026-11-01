@@ -12,7 +12,7 @@ interface DataTableProps {
 export function DataTable({ head, children }: DataTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-3xl table-fixed text-sm">
+      <table className="w-full min-w-2xl table-fixed text-sm">
         <thead className="bg-surface text-left text-xs text-muted-foreground">
           <tr className="h-11.25 border-b *:font-semibold">{head}</tr>
         </thead>

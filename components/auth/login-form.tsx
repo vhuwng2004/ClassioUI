@@ -35,10 +35,7 @@ export function LoginForm() {
     } catch (error) {
       if (error instanceof ApiError && error.code === "AUTHENTICATION_FAILED") {
         setCredentialsRejected(true);
-        toastFormError(
-          "Email hoặc mật khẩu không đúng",
-          "Kiểm tra lại thông tin đăng nhập và thử lại.",
-        );
+        toastFormError("Email hoặc mật khẩu không đúng");
       } else if (!applyValidationErrors(error, form)) {
         toastApiError(error);
       }
@@ -64,12 +61,10 @@ export function LoginForm() {
         name="password"
         label="Mật khẩu"
         autoComplete="current-password"
-        placeholder="Nhập mật khẩu"
         invalid={credentialsRejected}
       />
 
-      <div className="flex items-start justify-between">
-        <span className="text-xs text-muted-foreground">Tối đa 72 ký tự</span>
+      <div className="flex justify-end">
         <Link
           href="/forgot-password"
           className="text-sm font-semibold text-primary hover:underline"

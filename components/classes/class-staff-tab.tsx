@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { InfoIcon, PlusIcon, UserIcon } from "lucide-react";
+import { PlusIcon, UserIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import { DialogForm } from "@/components/form/dialog-form";
 import { TextField } from "@/components/form/fields";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { QueryState } from "@/components/layout/query-state";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -121,13 +120,9 @@ export function ClassStaffTab({ classId, editable }: ClassStaffTabProps) {
         onOpenChange={(open) => !open && setAssigning(null)}
       >
         {assigning && (
-          <DialogContent
-            title={`Phân công ${STAFF_LABELS[assigning]}`}
-            description={`Nhập ID người dùng của ${STAFF_LABELS[assigning]} cần thêm.`}
-          >
+          <DialogContent title={`Phân công ${STAFF_LABELS[assigning]}`}>
             <AssignStaffForm
               classId={classId}
-              canAssignTeachers={canAssignTeachers}
               onDone={() => setAssigning(null)}
             />
           </DialogContent>
@@ -227,15 +222,10 @@ function StaffSection({
 
 interface AssignStaffFormProps {
   classId: number;
-  canAssignTeachers: boolean;
   onDone: () => void;
 }
 
-function AssignStaffForm({
-  classId,
-  canAssignTeachers,
-  onDone,
-}: AssignStaffFormProps) {
+function AssignStaffForm({ classId, onDone }: AssignStaffFormProps) {
   const refreshClasses = useRefreshClasses();
   const form = useForm<AssignStaffValues>({
     resolver: zodResolver(assignStaffSchema),
@@ -266,17 +256,6 @@ function AssignStaffForm({
       pending={form.formState.isSubmitting}
       submitLabel="Phân công"
     >
-      <Alert variant="info">
-        <InfoIcon />
-        <AlertTitle>
-          Hệ thống chưa có tìm kiếm người dùng nên cần nhập ID.
-        </AlertTitle>
-        {!canAssignTeachers && (
-          <AlertDescription>
-            Giáo viên chỉ phân công được trợ giảng.
-          </AlertDescription>
-        )}
-      </Alert>
       <TextField
         control={form.control}
         name="userId"

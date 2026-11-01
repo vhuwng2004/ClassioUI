@@ -7,7 +7,6 @@ import { PageHeading } from "@/components/layout/page-heading";
 import { QueryState } from "@/components/layout/query-state";
 import { Card } from "@/components/ui/card";
 import { classApi, type ClassroomResponse } from "@/lib/api";
-import { formatDate } from "@/lib/format";
 
 export function StudentClassList() {
   const classes = useQuery({
@@ -19,10 +18,7 @@ export function StudentClassList() {
 
   return (
     <div className="space-y-5">
-      <PageHeading
-        title="Lớp của tôi"
-        description="Các lớp bạn đã được duyệt vào học."
-      />
+      <PageHeading title="Lớp của tôi" />
 
       {content.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -44,22 +40,14 @@ export function StudentClassList() {
 }
 
 function ClassCard({ classroom }: { classroom: ClassroomResponse }) {
-  const { name, description, createdAt } = classroom;
-
   return (
-    <Card className="flex flex-col gap-3 p-5">
-      <span className="flex size-10 items-center justify-center rounded-[10px] bg-info text-primary">
+    <Card className="flex items-center gap-3 p-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-info text-primary">
         <BookIcon className="size-5" />
       </span>
-      <div className="space-y-1.5">
-        <h2 className="truncate text-base font-semibold">{name}</h2>
-        <p className="text-sm text-muted-foreground">
-          {description ?? "Chưa có mô tả"}
-        </p>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Tạo ngày {formatDate(createdAt)}
-      </p>
+      <h2 className="min-w-0 truncate text-base font-semibold">
+        {classroom.name}
+      </h2>
     </Card>
   );
 }

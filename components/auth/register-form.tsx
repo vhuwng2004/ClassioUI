@@ -237,7 +237,7 @@ function GuardianCard({ control, index, onRemove }: GuardianCardProps) {
     <Card className="bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-sm font-semibold">Người giám hộ {index + 1}</h2>
-        {onRemove ? (
+        {onRemove && (
           <button
             type="button"
             onClick={onRemove}
@@ -246,10 +246,6 @@ function GuardianCard({ control, index, onRemove }: GuardianCardProps) {
           >
             <Trash2Icon className="size-4" />
           </button>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            Tối đa {MAX_GUARDIANS} người
-          </span>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">

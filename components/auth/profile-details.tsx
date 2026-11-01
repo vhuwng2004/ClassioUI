@@ -43,7 +43,6 @@ export function ProfileDetails() {
     <div className="space-y-5">
       <PageHeading
         title="Trang cá nhân"
-        description="Thông tin tài khoản của bạn."
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setChangingPassword(true)}>
