@@ -11,11 +11,11 @@ Tài liệu này mô tả toàn bộ 29 endpoint đang có của backend EduFlow
 1. Không tự nghĩ ra endpoint, field, query param hay mã lỗi ngoài tài liệu này. Thiếu API thì xem [mục 10](#10-những-gì-api-chưa-có) và báo lại, không đoán.
 2. Mọi request gọi qua cùng origin với client (dev proxy hoặc reverse proxy). Backend **không có CORS**, xem [mục 1.2](#12-cors-và-proxy-bắt-buộc).
 3. Client trình duyệt không tự giữ token: `accessToken` và `refreshToken` đều nằm trong cookie HttpOnly, không đọc được bằng JS. Không lưu `accessToken` trong body vào `localStorage`/`sessionStorage` và không gửi header `Authorization`.
-4. Gửi `Content-Type: application/json` với mọi request có body. Sai header sẽ nhận 500.
+4. Gửi `Content-Type: application/json` với mọi request có body. Sai header sẽ nhận 500. Ngoại lệ duy nhất là upload `POST /api/users/import`: gửi `FormData` và không tự đặt `Content-Type`.
 5. Trim email phía client trước khi gửi. Email có khoảng trắng đầu/cuối bị trả 400.
 6. Refresh phải single-flight, kể cả giữa nhiều tab, xem [mục 3.3](#33-refresh-token-rotation).
 7. Rẽ nhánh theo `code` trong body lỗi, không theo `detail` (`detail` lẫn tiếng Anh và tiếng Việt).
-8. Chỉ dùng giá trị `sort` trong [mục 2.4](#24-phân-trang). Giá trị khác trả 500.
+8. Chỉ dùng giá trị `sort` trong [mục 2.4](#24-phân-trang). Giá trị khác trả 500, riêng `/api/users` trả 400.
 9. Phân biệt 2 mã 401: `AUTHENTICATION_REQUIRED` thì thử refresh, `AUTHENTICATION_FAILED` thì không. Chỉ gọi `/auth/refresh` sau khi một API trả `AUTHENTICATION_REQUIRED`, không gọi chủ động khi tải trang.
 10. Response 204 không có body, không gọi `res.json()`.
 
@@ -89,6 +89,7 @@ Client gọi đường dẫn tương đối `/api/...`. Production cũng cần c
 
 ```text
 UserRole:          ADMIN | SP_ADMIN | TEACHER | ASSISTANT | USER
+UserStatus:        ACTIVE | LOCKED | INACTIVE
 Gender:            MALE | FEMALE | OTHER
 MembershipLevel:   FREE | PLUS | PRO | PREMIUM
 ClassStatus:       PENDING | ACTIVE | ARCHIVED
@@ -126,7 +127,7 @@ Sai kiểu JSON, sai định dạng ngày, sai enum, thiếu body hoặc `classI
 
 ### 2.4. Phân trang
 
-Áp dụng cho `GET /api/classes`, `GET /api/classes/{classId}/members`, `GET /api/classes/{classId}/join-requests`.
+Áp dụng cho `GET /api/classes`, `GET /api/classes/{classId}/members`, `GET /api/classes/{classId}/join-requests`, `GET /api/users`, `GET /api/users/assignable`.
 
 | Param | Mặc định | Hành vi |
 |---|---|---|
@@ -150,8 +151,9 @@ Field sort hợp lệ:
 |---|---|
 | `GET /api/classes` | `id`, `name`, `status`, `createdAt`, `updatedAt` |
 | `.../members`, `.../join-requests` | `id`, `status`, `joinedAt`, `user.fullName`, `user.email` |
+| `GET /api/users`, `GET /api/users/assignable` | `id`, `fullName`, `email`, `createdAt` |
 
-Sort field khác (kể cả `fullName`) trả **500 `INTERNAL_ERROR`**, không phải 400. Đọc `size` từ response thay vì giả định bằng giá trị đã gửi.
+Ở hai endpoint đầu, sort field khác (kể cả `fullName`) trả **500 `INTERNAL_ERROR`**, không phải 400. `/api/users` có whitelist nên trả 400 `INVALID_REQUEST`. Đọc `size` từ response thay vì giả định bằng giá trị đã gửi.
 
 ### 2.5. Bảng mã lỗi
 
@@ -164,9 +166,11 @@ Sort field khác (kể cả `fullName`) trả **500 `INTERNAL_ERROR`**, không p
 | 400 | `INVALID_RESET_TOKEN` | `resetToken` sai, hết hạn hoặc đã dùng; tài khoản không còn hoạt động | Quay lại bước nhập email | Phiên đặt lại mật khẩu đã hết hạn, vui lòng yêu cầu mã mới |
 | 400 | `INVALID_CURRENT_PASSWORD` | Sai mật khẩu hiện tại khi đổi mật khẩu | Lỗi ở ô mật khẩu hiện tại | Mật khẩu hiện tại không đúng |
 | 400 | `INVALID_MEMBER_ROLE` | User không đúng role cho thao tác | Toast | Tài khoản này không thể thực hiện vai trò được chọn |
+| 400 | `INVALID_IMPORT_FILE` | File import sai định dạng, thiếu cột bắt buộc, không có dòng dữ liệu, quá 2 MB hoặc quá 500 dòng | Toast, cho chọn file khác | File không hợp lệ. Hãy dùng file mẫu .xlsx, tối đa 2 MB và 500 dòng |
 | 401 | `AUTHENTICATION_REQUIRED` | Thiếu, sai, hết hạn access token; tài khoản bị khoá | Refresh rồi gọi lại một lần | (không hiện nếu refresh thành công) |
 | 401 | `AUTHENTICATION_FAILED` | Sai đăng nhập; refresh token thiếu, sai, hết hạn, đã dùng | Không refresh. Ở login: báo lỗi; ở refresh: xoá session, về login | Email hoặc mật khẩu không đúng |
 | 403 | `ACCESS_DENIED` | Role không được phép | Ẩn nút theo [mục 4](#4-phân-quyền); toast | Bạn không có quyền thực hiện thao tác này |
+| 403 | `PASSWORD_CHANGE_REQUIRED` | Tài khoản còn dùng mật khẩu tạm, xem [mục 3.5](#35-mật-khẩu-tạm) | Cập nhật `mustChangePassword` và hiện form đổi mật khẩu | Vui lòng đổi mật khẩu tạm trước khi tiếp tục |
 | 404 | `CLASSROOM_NOT_FOUND` | Lớp không tồn tại, **hoặc** caller không có membership `ACTIVE`, hoặc mã tham gia sai | Trang "không tìm thấy" | Không tìm thấy lớp học |
 | 404 | `RESOURCE_NOT_FOUND` | Route sai, user hoặc membership không tồn tại | Toast hoặc trạng thái rỗng | Không tìm thấy dữ liệu |
 | 405 | `METHOD_NOT_ALLOWED` | Sai HTTP method | Lỗi code client | Yêu cầu không hợp lệ |
@@ -177,6 +181,8 @@ Sort field khác (kể cả `fullName`) trả **500 `INTERNAL_ERROR`**, không p
 | 409 | `CLASSROOM_PENDING_APPROVAL` | Ghi vào hoặc tham gia lớp đang chờ duyệt | Làm mới lớp, khoá thao tác | Lớp đang chờ duyệt |
 | 409 | `CLASSROOM_NOT_PENDING` | Duyệt lớp không ở trạng thái `PENDING` | Làm mới dữ liệu | Lớp không còn ở trạng thái chờ duyệt |
 | 409 | `MEMBERSHIP_CONFLICT` | Trạng thái membership không cho phép | Làm mới danh sách | Trạng thái thành viên đã thay đổi |
+| 409 | `CANNOT_MODIFY_SELF` | Tự khoá, mở khoá, đổi role hoặc đặt lại mật khẩu hộ cho chính mình | Ẩn thao tác; toast | Không thể thực hiện thao tác này với chính tài khoản của bạn |
+| 409 | `USER_HAS_ACTIVE_MEMBERSHIP` | Đổi role khi user còn membership `PENDING` hoặc `ACTIVE`, trừ đổi giữa `TEACHER` và `ASSISTANT` | Toast, hướng dẫn gỡ khỏi lớp trước | Người này vẫn còn trong lớp. Hãy gỡ khỏi lớp trước khi đổi vai trò |
 | 500 | `INTERNAL_ERROR` | Lỗi không lường trước | Toast kèm `correlationId` | Đã có lỗi xảy ra |
 | 503 | `PASSWORD_CHANGE_UNAVAILABLE` | Redis/DB lỗi khi đặt lại mật khẩu | Yêu cầu OTP mới sau | Dịch vụ tạm gián đoạn, vui lòng yêu cầu mã mới |
 
@@ -242,6 +248,15 @@ Không refresh chủ động: chỉ refresh sau khi API trả `AUTHENTICATION_RE
 - Logout chỉ thu hồi refresh token của phiên hiện tại và xoá cả 2 cookie. Client phải tự xoá state và cache trong bộ nhớ.
 - Đặt lại và đổi mật khẩu đều thu hồi **mọi** refresh token của user và xoá cả 2 cookie ở trình duyệt gọi API. Access token trên thiết bị khác vẫn dùng được đến khi hết hạn.
 
+### 3.5. Mật khẩu tạm
+
+Tài khoản do admin tạo, hoặc được admin đặt lại mật khẩu hộ, có `mustChangePassword: true` trong `UserSummary`.
+
+- Backend chặn ngay ở filter xác thực. Khi cờ bật, access token chỉ gọi được `GET /api/auth/me` và `POST /api/auth/change-password`. Mọi route cần đăng nhập khác trả 403 `PASSWORD_CHANGE_REQUIRED`. Route công khai như `logout` không bị ảnh hưởng.
+- `newPassword` trùng mật khẩu tạm trả 400 `VALIDATION_FAILED` với `errors[0].field = "newPassword"`.
+- Đổi mật khẩu hoặc đặt lại qua "Quên mật khẩu" đều xoá cờ.
+- Admin có thể đặt lại mật khẩu khi người dùng đang đăng nhập, nên client phải xử lý `PASSWORD_CHANGE_REQUIRED` ở mọi API, không chỉ sau login. Người dùng có thể chưa được báo là mật khẩu đã đổi, vì vậy form phải có nút đăng xuất.
+
 ## 4. Phân quyền
 
 Có 2 lớp kiểm tra, cho 2 kết quả khác nhau:
@@ -268,6 +283,19 @@ Role áp dụng như nhau ở mọi lớp, không có role riêng theo lớp.
 | `GET .../join-requests`, `POST .../approve`, `POST .../reject` | ✅ | ✅ thành viên | ✅ thành viên | ❌ |
 | `GET .../membership/me` | ✅ (thường 404) | ✅ | ✅ | ✅ |
 | `DELETE .../membership/me` | ❌ | ❌ | ❌ | ✅ |
+| `GET /api/users`, `GET /api/users/{id}` | ✅ | ❌ | ❌ | ❌ |
+| `GET /api/users/assignable` | ✅ TEACHER, ASSISTANT | ✅ chỉ ASSISTANT | ❌ | ❌ |
+| `POST /api/users`, `POST /api/users/import` | ✅ (xem dưới) | ❌ | ❌ | ❌ |
+| `POST /api/users/{id}/lock`, `/unlock`, `/reset-password` | ✅ (xem dưới) | ❌ | ❌ | ❌ |
+| `PATCH /api/users/{id}/role` | Chỉ `SP_ADMIN` | ❌ | ❌ | ❌ |
+
+Trong nhóm `/api/users`, `ADMIN` và `SP_ADMIN` khác nhau:
+
+| Thao tác | `ADMIN` với HS/GV/TG | `ADMIN` với admin | `SP_ADMIN` với người khác | Với chính mình |
+|---|---|---|---|---|
+| Tạo tài khoản | Được | 403 | Được | Không áp dụng |
+| Khoá, mở khoá, đặt lại mật khẩu | Được | 403 | Được | 409 |
+| Đổi role | 403 | 403 | Được | 409 |
 
 `joinCode` chỉ có giá trị khi caller là `ADMIN`, `SP_ADMIN`, `TEACHER`; với `ASSISTANT` và `USER` là `null`.
 
@@ -340,7 +368,8 @@ Regex mật khẩu: `^(?=.*[A-Z])(?=.*[^A-Za-z0-9\s])[\x20-\x7E]+$`. Không bắ
     "school": "THCS A",
     "grade": "6",
     "role": "USER",
-    "membershipLevel": "FREE"
+    "membershipLevel": "FREE",
+    "mustChangePassword": false
   }
 }
 ```
@@ -473,6 +502,8 @@ Lỗi: 400 `VALIDATION_FAILED`, `INVALID_RESET_TOKEN`; 503 `PASSWORD_CHANGE_UNAV
 ```
 
 Mọi phiên của user bị đăng xuất, kể cả phiên hiện tại. Sau khi thành công: xoá session client, chuyển về login. Sai `currentPassword` thì mật khẩu, phiên và cookie giữ nguyên.
+
+Tài khoản đang dùng mật khẩu tạm không được đặt `newPassword` trùng mật khẩu đó, xem [mục 3.5](#35-mật-khẩu-tạm).
 
 Lỗi: 400 `VALIDATION_FAILED`, `INVALID_CURRENT_PASSWORD`; 401 `AUTHENTICATION_REQUIRED`.
 
@@ -729,7 +760,7 @@ Học sinh bị từ chối có thể gửi lại yêu cầu bằng mã tham gia
 
 ### 7.10. `PUT /api/classes/{classId}/staff/{userId}`
 
-Không có body. Phân công staff. **Idempotent**: đã `ACTIVE` vẫn trả 200.
+Không có body. Phân công staff. **Idempotent**: đã `ACTIVE` vẫn trả 200. Lấy `userId` từ [`GET /api/users/assignable`](#123-get-apiusersassignable).
 
 | Caller | User được phân công |
 |---|---|
@@ -796,6 +827,10 @@ GET /join-requests → approve/reject từng người → làm mới danh sách
 | Phân công giáo viên | `ADMIN`, `SP_ADMIN` |
 | Phân công trợ giảng | `ADMIN`, `SP_ADMIN`, `TEACHER` |
 | Nhập mã tham gia, rời lớp | `role === 'USER'` |
+| Trang người dùng, tạo tài khoản, nhập Excel | `ADMIN`, `SP_ADMIN` |
+| Khoá, mở khoá, đặt lại mật khẩu | Không phải chính mình; người được thao tác là admin thì chỉ `SP_ADMIN` |
+| Đổi vai trò | `SP_ADMIN`, không phải chính mình |
+| Chọn vai trò admin khi tạo tài khoản | `SP_ADMIN` |
 
 ## 9. Code mẫu TypeScript
 
@@ -830,7 +865,11 @@ export type ErrorCode =
   | 'CLASSROOM_NOT_PENDING'
   | 'MEMBERSHIP_CONFLICT'
   | 'INTERNAL_ERROR'
-  | 'PASSWORD_CHANGE_UNAVAILABLE';
+  | 'PASSWORD_CHANGE_UNAVAILABLE'
+  | 'PASSWORD_CHANGE_REQUIRED'
+  | 'CANNOT_MODIFY_SELF'
+  | 'USER_HAS_ACTIVE_MEMBERSHIP'
+  | 'INVALID_IMPORT_FILE';
 
 export interface ProblemDetail {
   type: string;
@@ -855,6 +894,7 @@ export interface UserSummary {
   grade: string | null;
   role: UserRole;
   membershipLevel: MembershipLevel;
+  mustChangePassword: boolean;
 }
 
 export interface AuthResponse {
@@ -1117,6 +1157,8 @@ export const memberApi = {
 };
 ```
 
+Client cho [User API](#12-user-api) nằm ở `lib/api/users.ts` (`userApi`). `api()` không đặt `Content-Type` khi body là `FormData`, để trình duyệt tự thêm `boundary`.
+
 Chỉ `refreshSession()` gọi `/auth/refresh`, và chỉ `api()` gọi `refreshSession()` sau khi nhận 401. Sau `register`, `login`, gọi `setHasSession(true)`; sau `logout`, `resetPassword` và `changePassword`, gọi `setHasSession(false)`.
 
 ## 10. Những gì API chưa có
@@ -1126,12 +1168,11 @@ Không sinh code gọi các API dưới đây. Nếu màn hình cần, ghi rõ l
 | Thiếu | Ảnh hưởng tới client |
 |---|---|
 | Đổi avatar | `avatarUrl` không có trong response |
-| Tìm kiếm, liệt kê user | `PUT .../staff/{userId}` cần `userId`, nhưng không có API lấy ID của giáo viên/trợ giảng chưa thuộc lớp |
-| Tạo tài khoản staff, đổi role, khoá tài khoản | Đăng ký luôn tạo `USER`; hiện chỉ đổi được trong DB |
+| Admin sửa thông tin người khác, xoá user | Người dùng tự sửa qua `PUT /auth/me`; chưa có trạng thái `INACTIVE` |
 | Danh sách lớp đang chờ duyệt của học sinh | `GET /classes` chỉ trả lớp `ACTIVE`; client phải tự giữ `classId` |
 | Tên lớp khi đang `PENDING` | `POST /classes/join` chỉ trả `classId`; `GET /classes/{id}` trả 404 |
 | Đọc thông tin người giám hộ | Lưu khi đăng ký nhưng không API nào trả về |
-| `status` của user, `createdBy` và sĩ số của lớp | Không có trong response |
+| `createdBy` và sĩ số của lớp | Không có trong response |
 | Lý do từ chối lớp, thông báo khi lớp được duyệt | Từ chối bằng `DELETE`, giáo viên chỉ thấy lớp chuyển sang `ARCHIVED` |
 | Staff tự rời lớp | Phải do người có quyền gỡ |
 | Lịch học, điểm danh, tài liệu, bài kiểm tra, chat, upload file | Có bảng DB nhưng chưa có API |
@@ -1144,6 +1185,106 @@ Các hành vi dưới đây được xác nhận khi gọi thật, là điểm y
 |---|---|---|
 | Không có CORS, preflight trả 401 | Cấu hình CORS theo origin | Dùng cùng origin |
 | `Content-Type` sai trả 500 | 415 | Luôn gửi `application/json` khi có body |
-| `sort` sai trả 500 | 400 | Chỉ dùng field trong [mục 2.4](#24-phân-trang) |
+| `sort` sai trả 500 ở `/classes` | 400 | Chỉ dùng field trong [mục 2.4](#24-phân-trang) |
 | Cookie chỉ có `Secure` theo `request.isSecure()`, chưa cấu hình forwarded headers | Có `Secure` sau TLS proxy | Không xử lý được ở client; cần cấu hình khi deploy |
 | Khoá JWT sinh lúc khởi động | Khoá cấu hình cố định | Luồng refresh tự xử lý; chỉ chạy một instance |
+
+## 12. User API
+
+Tất cả cần đăng nhập, quyền xem [mục 4](#4-phân-quyền). Tìm kiếm chưa bỏ dấu tiếng Việt.
+
+```ts
+type UserStatus = 'ACTIVE' | 'LOCKED' | 'INACTIVE';
+
+interface UserAdminResponse {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  dateOfBirth: string;
+  gender: Gender | null;
+  school: string | null;
+  grade: string | null;
+  role: UserRole;
+  status: UserStatus;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+```
+
+### 12.1. `GET /api/users`
+
+Query: `keyword` (tên, email, số điện thoại), `role`, `status`, cùng các param phân trang. **200** + `PageResponse<UserAdminResponse>`.
+
+Lỗi: 400 `INVALID_REQUEST` (`sort`, `role` hoặc `status` sai).
+
+### 12.2. `GET /api/users/{id}`
+
+**200** + `UserAdminResponse`.
+
+Lỗi: 404 `RESOURCE_NOT_FOUND`.
+
+### 12.3. `GET /api/users/assignable`
+
+Danh sách để chọn người phân công vào lớp. Query: `role` (`TEACHER` hoặc `ASSISTANT`), `keyword` (tên, email), cùng các param phân trang. Chỉ trả user `ACTIVE`.
+
+**200** + `PageResponse<{ id: number; fullName: string; email: string }>`.
+
+Lỗi: 403 `ACCESS_DENIED` (`TEACHER` hỏi `role=TEACHER`).
+
+### 12.4. `POST /api/users`
+
+Body giống `RegisterRequest` nhưng bỏ `password` và thêm `role` (bắt buộc). Học sinh dưới 18 tuổi cần `guardians`.
+
+**201**, kèm `Cache-Control: no-store`. `temporaryPassword` là mật khẩu mặc định cấu hình ở backend (`DEFAULT_USER_PASSWORD`), mọi tài khoản dùng chung.
+
+```json
+{ "user": { "...": "UserAdminResponse" }, "temporaryPassword": "Classio@2026" }
+```
+
+Lỗi: 400 `VALIDATION_FAILED`, `GUARDIAN_REQUIRED`; 403 `ACCESS_DENIED` (`ADMIN` tạo admin); 409 `EMAIL_ALREADY_REGISTERED`.
+
+### 12.5. `PATCH /api/users/{id}/role`
+
+Body `{ "role": "TEACHER" }`. Có hiệu lực ngay. Role giữ nguyên thì trả 200. Giữa `TEACHER` và `ASSISTANT` thì giữ membership; đổi khác cần gỡ user khỏi mọi lớp trước.
+
+**200** + `UserAdminResponse`.
+
+Lỗi: 403 `ACCESS_DENIED`; 404 `RESOURCE_NOT_FOUND`; 409 `CANNOT_MODIFY_SELF`, `USER_HAS_ACTIVE_MEMBERSHIP`.
+
+### 12.6. `POST /api/users/{id}/lock`, `POST /api/users/{id}/unlock`
+
+Không có body. Có hiệu lực ngay, gọi lại khi đã ở trạng thái đó vẫn trả 200. Lock thu hồi mọi refresh token.
+
+**200** + `UserAdminResponse`.
+
+Lỗi: 403 `ACCESS_DENIED`; 404 `RESOURCE_NOT_FOUND`; 409 `CANNOT_MODIFY_SELF`.
+
+### 12.7. `POST /api/users/{id}/reset-password`
+
+Không có body. Mật khẩu được đặt về mật khẩu mặc định, mọi refresh token bị thu hồi, và `mustChangePassword` bật.
+
+**200**, kèm `Cache-Control: no-store`: `{ "temporaryPassword": "Classio@2026" }`.
+
+Lỗi: giống 12.6.
+
+### 12.8. `POST /api/users/import?dryRun=`
+
+Tạo học sinh hàng loạt từ file `.xlsx`. Gửi `multipart/form-data` với part `file`. `dryRun` mặc định là `true`.
+
+File dùng mẫu `/templates/mau-nhap-hoc-sinh.xlsx` của frontend: dòng 1 là tiêu đề, tối đa 500 dòng dữ liệu và 2 MB. Có lỗi ở bất kỳ dòng nào thì không tạo tài khoản nào. Mật khẩu ban đầu không ai biết, học sinh nhận email hướng dẫn dùng "Quên mật khẩu", nên `mustChangePassword` là `false`.
+
+**200**, kể cả khi có lỗi dòng. Phải kiểm tra `errors`, kể cả với `dryRun=false`, vì dữ liệu có thể đổi sau lần kiểm tra trước.
+
+```json
+{
+  "dryRun": false,
+  "totalRows": 3,
+  "createdCount": 0,
+  "errors": [{ "row": 4, "field": "email", "code": "EMAIL_ALREADY_REGISTERED" }]
+}
+```
+
+`row` là số dòng trong file Excel. `code` thuộc `REQUIRED`, `INVALID_FORMAT`, `TOO_LONG`, `DUPLICATE_IN_FILE`, `EMAIL_ALREADY_REGISTERED`, `GUARDIAN_REQUIRED`.
+
+Lỗi: 400 `INVALID_IMPORT_FILE`; 409 `EMAIL_ALREADY_REGISTERED` (email vừa được đăng ký giữa lúc kiểm tra và lúc tạo, không tài khoản nào được tạo).

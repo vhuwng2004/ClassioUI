@@ -4,6 +4,7 @@ import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { RequiredPasswordChangeDialog } from "@/components/auth/change-password-dialog";
 import type { ClassroomResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth/auth-provider";
 import type { Permission } from "@/lib/auth/permissions";
@@ -32,7 +33,16 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }, [router, state]);
 
-  return state.status === "authenticated" ? children : <FullPageSpinner />;
+  if (state.status !== "authenticated") return <FullPageSpinner />;
+  // Không render trang: mọi API của trang đều bị backend từ chối cho tới khi đổi mật khẩu.
+  if (state.user.mustChangePassword) {
+    return (
+      <div className="min-h-svh bg-surface">
+        <RequiredPasswordChangeDialog />
+      </div>
+    );
+  }
+  return children;
 }
 
 /** Dùng bên trong RequireAuth. Thiếu quyền thì chuyển sang /forbidden. */

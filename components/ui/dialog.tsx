@@ -25,11 +25,14 @@ interface DialogContentProps extends Omit<
 > {
   title: string;
   description?: string;
+  /** false: bỏ nút đóng, dùng cho hộp thoại bắt buộc hoàn thành. */
+  showClose?: boolean;
 }
 
 function DialogContent({
   title,
   description,
+  showClose = true,
   className,
   children,
   onInteractOutside,
@@ -68,16 +71,18 @@ function DialogContent({
               </DialogPrimitive.Description>
             )}
           </div>
-          <DialogPrimitive.Close asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Đóng"
-              className="text-muted-foreground"
-            >
-              <XIcon className="size-4.5" />
-            </Button>
-          </DialogPrimitive.Close>
+          {showClose && (
+            <DialogPrimitive.Close asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Đóng"
+                className="text-muted-foreground"
+              >
+                <XIcon className="size-4.5" />
+              </Button>
+            </DialogPrimitive.Close>
+          )}
         </header>
         {children}
       </DialogPrimitive.Content>

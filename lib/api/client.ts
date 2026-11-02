@@ -6,6 +6,7 @@ const REFRESH_LOCK = "classio-refresh";
 interface SessionListener {
   onRefreshed: (session: AuthResponse) => void;
   onExpired: () => void;
+  onPasswordChangeRequired: () => void;
 }
 
 // Access token nằm trong cookie HttpOnly; ở đây chỉ biết có phiên hay không để báo hết hạn đúng lúc.
@@ -47,7 +48,9 @@ async function parse<T>(res: Response): Promise<T> {
 
 function send(path: string, init: RequestInit): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (init.body != null) headers.set("Content-Type", "application/json");
+  // FormData tự có Content-Type kèm boundary, đặt tay sẽ làm hỏng request.
+  if (init.body != null && !(init.body instanceof FormData))
+    headers.set("Content-Type", "application/json");
   return fetch(`${API_BASE}${path}`, {
     ...init,
     headers,
@@ -109,6 +112,9 @@ export async function api<T>(
       await refreshOrExpire();
       return api<T>(path, init, false);
     }
+    // Admin có thể đặt lại mật khẩu khi người dùng đang đăng nhập.
+    if (error instanceof ApiError && error.code === "PASSWORD_CHANGE_REQUIRED")
+      sessionListener?.onPasswordChangeRequired();
     throw error;
   }
 }

@@ -21,7 +21,7 @@ export const emailSchema = z
   .max(320, "Email tối đa 320 ký tự")
   .pipe(z.email(INVALID_EMAIL));
 
-function optionalText(maxLength: number, label: string) {
+export function optionalText(maxLength: number, label: string) {
   return z.string().trim().max(maxLength, `${label} tối đa ${maxLength} ký tự`);
 }
 
@@ -93,7 +93,16 @@ export const changePasswordSchema = z
     path: ["confirmPassword"],
   });
 
-const guardianSchema = z.object({
+/** Admin đã thấy mật khẩu tạm nên không được giữ lại. Backend cũng chặn trường hợp này. */
+export const temporaryPasswordChangeSchema = changePasswordSchema.refine(
+  (values) => values.newPassword !== values.currentPassword,
+  {
+    message: "Mật khẩu mới phải khác mật khẩu tạm",
+    path: ["newPassword"],
+  },
+);
+
+export const guardianSchema = z.object({
   fullName: z
     .string()
     .trim()
@@ -108,7 +117,7 @@ const guardianSchema = z.object({
   relationship: optionalText(50, "Quan hệ"),
 });
 
-const looseGuardianSchema = z.object({
+export const looseGuardianSchema = z.object({
   fullName: z.string(),
   phone: z.string(),
   address: z.string(),
@@ -137,13 +146,13 @@ export function isUnder18(dateOfBirth: string): boolean {
   return adultDate.toISOString().slice(0, 10) > todayUtc();
 }
 
-const fullNameSchema = z
+export const fullNameSchema = z
   .string()
   .trim()
   .min(1, "Vui lòng nhập họ và tên")
   .max(150, "Họ và tên tối đa 150 ký tự");
 
-const dateOfBirthSchema = z
+export const dateOfBirthSchema = z
   .string()
   .min(1, "Vui lòng nhập ngày sinh")
   .refine(
@@ -151,7 +160,7 @@ const dateOfBirthSchema = z
     "Ngày sinh phải là ngày trong quá khứ",
   );
 
-const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"]).optional();
+export const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"]).optional();
 
 export const profileSchema = z.object({
   fullName: fullNameSchema,
@@ -198,7 +207,7 @@ export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
 export type ProfileValues = z.infer<typeof profileSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
 
-const blankToUndefined = (value: string) => value.trim() || undefined;
+export const blankToUndefined = (value: string) => value.trim() || undefined;
 
 /** PUT thay toàn bộ hồ sơ: field để trống không gửi đi và bị xoá ở backend. */
 export function toUpdateProfileRequest(

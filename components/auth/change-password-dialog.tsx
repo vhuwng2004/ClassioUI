@@ -1,11 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DialogForm } from "@/components/form/dialog-form";
 import { PasswordField } from "@/components/form/fields";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   applyFieldError,
@@ -17,6 +19,7 @@ import {
 import { useAuth } from "@/lib/auth/auth-provider";
 import {
   changePasswordSchema,
+  temporaryPasswordChangeSchema,
   type ChangePasswordValues,
 } from "@/lib/validations/auth";
 
@@ -43,10 +46,56 @@ export function ChangePasswordDialog({
   );
 }
 
-function ChangePasswordForm() {
+/**
+ * Tài khoản đang dùng mật khẩu tạm: không đóng được, chỉ có đổi mật khẩu hoặc đăng xuất.
+ * `onOpenChange` bỏ trống nên Esc và bấm ra ngoài không có tác dụng.
+ */
+export function RequiredPasswordChangeDialog() {
+  return (
+    <Dialog open>
+      <DialogContent
+        title="Đặt mật khẩu mới"
+        description="Tài khoản của bạn đang dùng mật khẩu tạm. Hãy đặt mật khẩu mới để tiếp tục, sau đó đăng nhập lại."
+        showClose={false}
+      >
+        <ChangePasswordForm temporary />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SignOutButton() {
+  const { logout } = useAuth();
+  const [pending, setPending] = useState(false);
+
+  const handleLogout = async () => {
+    setPending(true);
+    try {
+      await logout();
+    } catch (error) {
+      toastApiError(error);
+      setPending(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={pending}
+      onClick={handleLogout}
+    >
+      Đăng xuất
+    </Button>
+  );
+}
+
+function ChangePasswordForm({ temporary = false }: { temporary?: boolean }) {
   const { changePassword } = useAuth();
   const form = useForm<ChangePasswordValues>({
-    resolver: zodResolver(changePasswordSchema),
+    resolver: zodResolver(
+      temporary ? temporaryPasswordChangeSchema : changePasswordSchema,
+    ),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -78,11 +127,12 @@ function ChangePasswordForm() {
       onSubmit={onSubmit}
       pending={form.formState.isSubmitting}
       submitLabel="Đổi mật khẩu"
+      secondaryAction={temporary ? <SignOutButton /> : undefined}
     >
       <PasswordField
         control={control}
         name="currentPassword"
-        label="Mật khẩu hiện tại"
+        label={temporary ? "Mật khẩu tạm" : "Mật khẩu hiện tại"}
         required
         autoFocus
         autoComplete="current-password"

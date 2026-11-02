@@ -1,15 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { InfoIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  useFieldArray,
-  useForm,
-  useWatch,
-  type Control,
-} from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DatePicker } from "@/components/form/date-picker";
@@ -19,7 +14,6 @@ import { SegmentedControl } from "@/components/form/segmented-control";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   ApiError,
   applyFieldError,
@@ -41,6 +35,7 @@ import {
   type RegisterValues,
 } from "@/lib/validations/auth";
 
+import { GuardianCard } from "./guardian-card";
 import { PasswordRules } from "./password-rules";
 
 export function RegisterForm() {
@@ -223,59 +218,5 @@ export function RegisterForm() {
         </p>
       </div>
     </form>
-  );
-}
-
-interface GuardianCardProps {
-  control: Control<RegisterValues>;
-  index: number;
-  onRemove?: () => void;
-}
-
-function GuardianCard({ control, index, onRemove }: GuardianCardProps) {
-  return (
-    <Card className="bg-surface p-5">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-sm font-semibold">Người giám hộ {index + 1}</h2>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`Xoá người giám hộ ${index + 1}`}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2Icon className="size-4" />
-          </button>
-        )}
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          control={control}
-          name={`guardians.${index}.fullName`}
-          label="Họ và tên"
-          required
-        />
-        <TextField
-          control={control}
-          name={`guardians.${index}.phone`}
-          label="Số điện thoại"
-          required
-          type="tel"
-        />
-        <TextField
-          control={control}
-          name={`guardians.${index}.address`}
-          label="Địa chỉ"
-          required
-          placeholder="Số nhà, đường, quận"
-        />
-        <TextField
-          control={control}
-          name={`guardians.${index}.relationship`}
-          label="Quan hệ"
-          placeholder="Mẹ"
-        />
-      </div>
-    </Card>
   );
 }

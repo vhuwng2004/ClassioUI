@@ -81,6 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Cùng id để QueryState không hiện trùng khi danh sách lỗi theo.
         toast.error(SESSION_EXPIRED_MESSAGE, { id: SESSION_EXPIRED_MESSAGE });
       },
+      onPasswordChangeRequired: () =>
+        setState((current) =>
+          current.status === "authenticated"
+            ? {
+                ...current,
+                user: { ...current.user, mustChangePassword: true },
+              }
+            : current,
+        ),
     });
     return () => setSessionListener(null);
   }, [closeSession, openSession]);

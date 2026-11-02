@@ -1,4 +1,5 @@
 export type UserRole = "ADMIN" | "SP_ADMIN" | "TEACHER" | "ASSISTANT" | "USER";
+export type UserStatus = "ACTIVE" | "LOCKED" | "INACTIVE";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type MembershipLevel = "FREE" | "PLUS" | "PRO" | "PREMIUM";
 export type ClassStatus = "PENDING" | "ACTIVE" | "ARCHIVED";
@@ -26,7 +27,11 @@ export type ErrorCode =
   | "CLASSROOM_NOT_PENDING"
   | "MEMBERSHIP_CONFLICT"
   | "INTERNAL_ERROR"
-  | "PASSWORD_CHANGE_UNAVAILABLE";
+  | "PASSWORD_CHANGE_UNAVAILABLE"
+  | "PASSWORD_CHANGE_REQUIRED"
+  | "CANNOT_MODIFY_SELF"
+  | "USER_HAS_ACTIVE_MEMBERSHIP"
+  | "INVALID_IMPORT_FILE";
 
 export interface ProblemDetail {
   type: string;
@@ -51,6 +56,7 @@ export interface UserSummary {
   grade: string | null;
   role: UserRole;
   membershipLevel: MembershipLevel;
+  mustChangePassword: boolean;
 }
 
 export interface AuthResponse {
@@ -170,4 +176,68 @@ export interface ClassMemberResponse {
   userRole: UserRole;
   status: ClassMemberStatus;
   joinedAt: string;
+}
+
+export interface UserAdminResponse {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  dateOfBirth: string;
+  gender: Gender | null;
+  school: string | null;
+  grade: string | null;
+  role: UserRole;
+  status: UserStatus;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
+export interface CreateUserRequest {
+  email: string;
+  fullName: string;
+  phone?: string;
+  dateOfBirth: string;
+  gender?: Gender;
+  address?: string;
+  school?: string;
+  grade?: string;
+  role: UserRole;
+  guardians?: GuardianRequest[];
+}
+
+export interface CreatedUserResponse {
+  user: UserAdminResponse;
+  temporaryPassword: string;
+}
+
+export interface TemporaryPasswordResponse {
+  temporaryPassword: string;
+}
+
+export interface AssignableUserResponse {
+  id: number;
+  fullName: string;
+  email: string;
+}
+
+export type ImportErrorCode =
+  | "REQUIRED"
+  | "INVALID_FORMAT"
+  | "TOO_LONG"
+  | "DUPLICATE_IN_FILE"
+  | "EMAIL_ALREADY_REGISTERED"
+  | "GUARDIAN_REQUIRED";
+
+export interface ImportRowError {
+  row: number;
+  field: string;
+  code: ImportErrorCode;
+}
+
+export interface UserImportResponse {
+  dryRun: boolean;
+  totalRows: number;
+  createdCount: number;
+  errors: ImportRowError[];
 }

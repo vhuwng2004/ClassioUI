@@ -26,11 +26,7 @@ export const addStudentSchema = z.object({ email: emailSchema });
 export type AddStudentValues = z.infer<typeof addStudentSchema>;
 
 export const assignStaffSchema = z.object({
-  userId: z
-    .string()
-    .trim()
-    .min(1, "Vui lòng nhập ID người dùng")
-    .regex(/^\d+$/, "ID người dùng chỉ gồm chữ số"),
+  userId: z.number("Vui lòng chọn một người trong danh sách"),
 });
 
 export type AssignStaffValues = z.infer<typeof assignStaffSchema>;

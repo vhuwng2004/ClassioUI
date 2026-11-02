@@ -11,4 +11,5 @@ export {
   toastFormError,
 } from "./errors";
 export { memberApi } from "./members";
+export { userApi } from "./users";
 export type * from "./types";

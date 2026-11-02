@@ -1,30 +1,33 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, UserIcon } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { CheckIcon, PlusIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DialogForm } from "@/components/form/dialog-form";
-import { TextField } from "@/components/form/fields";
+import { SearchInput } from "@/components/form/search-input";
 import { ConfirmDialog } from "@/components/layout/confirm-dialog";
 import { QueryState } from "@/components/layout/query-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useRefreshClasses } from "@/hooks/use-classroom";
+import { useDebounced } from "@/hooks/use-debounced";
 import {
   applyFieldError,
   applyValidationErrors,
   memberApi,
   submitForm,
   toastApiError,
+  userApi,
   type ClassMemberResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { cn } from "@/lib/utils";
 import {
   assignStaffSchema,
   type AssignStaffValues,
@@ -123,6 +126,7 @@ export function ClassStaffTab({ classId, editable }: ClassStaffTabProps) {
           <DialogContent title={`Phân công ${STAFF_LABELS[assigning]}`}>
             <AssignStaffForm
               classId={classId}
+              role={assigning}
               onDone={() => setAssigning(null)}
             />
           </DialogContent>
@@ -222,19 +226,27 @@ function StaffSection({
 
 interface AssignStaffFormProps {
   classId: number;
+  role: StaffRole;
   onDone: () => void;
 }
 
-function AssignStaffForm({ classId, onDone }: AssignStaffFormProps) {
+function AssignStaffForm({ classId, role, onDone }: AssignStaffFormProps) {
   const refreshClasses = useRefreshClasses();
+  const [search, setSearch] = useState("");
+  const keyword = useDebounced(search.trim());
   const form = useForm<AssignStaffValues>({
     resolver: zodResolver(assignStaffSchema),
-    defaultValues: { userId: "" },
+  });
+  const selectedId = useWatch({ control: form.control, name: "userId" });
+  const candidates = useQuery({
+    queryKey: ["users", "assignable", { role, keyword }],
+    queryFn: () => userApi.assignable({ role, keyword, size: 10 }),
+    placeholderData: keepPreviousData,
   });
 
   const onSubmit = submitForm(form, async ({ userId }) => {
     try {
-      await memberApi.assignStaff(classId, Number(userId));
+      await memberApi.assignStaff(classId, userId);
       await refreshClasses();
       toast.success("Đã phân công vào lớp.");
       onDone();
@@ -244,7 +256,7 @@ function AssignStaffForm({ classId, onDone }: AssignStaffFormProps) {
           INVALID_MEMBER_ROLE:
             "Tài khoản này không thể thực hiện vai trò được chọn",
           ACCESS_DENIED: "Bạn không có quyền phân công tài khoản này",
-          RESOURCE_NOT_FOUND: "Không tìm thấy người dùng với ID này",
+          RESOURCE_NOT_FOUND: "Không tìm thấy người dùng này",
         }) || applyValidationErrors(error, form);
       if (!handled) toastApiError(error);
     }
@@ -256,15 +268,44 @@ function AssignStaffForm({ classId, onDone }: AssignStaffFormProps) {
       pending={form.formState.isSubmitting}
       submitLabel="Phân công"
     >
-      <TextField
-        control={form.control}
-        name="userId"
-        label="ID người dùng"
-        required
-        icon={UserIcon}
-        inputMode="numeric"
+      <SearchInput
+        label="Tìm theo tên hoặc email"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
         autoFocus
       />
+      <div className="max-h-64 divide-y divide-muted overflow-y-auto rounded-lg border">
+        {candidates.data?.content.map((candidate) => {
+          const selected = candidate.id === selectedId;
+          return (
+            <button
+              key={candidate.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() =>
+                form.setValue("userId", candidate.id, {
+                  shouldValidate: true,
+                })
+              }
+              className={cn(
+                "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm focus-ring",
+                selected ? "bg-info" : "hover:bg-muted",
+              )}
+            >
+              <MemberIdentity
+                fullName={candidate.fullName}
+                email={candidate.email}
+              />
+              {selected && <CheckIcon className="size-4 text-primary" />}
+            </button>
+          );
+        })}
+        <QueryState
+          query={candidates}
+          isEmpty={candidates.data?.content.length === 0}
+          emptyMessage="Không tìm thấy tài khoản phù hợp."
+        />
+      </div>
     </DialogForm>
   );
 }

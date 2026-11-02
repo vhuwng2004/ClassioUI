@@ -39,6 +39,13 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   MEMBERSHIP_CONFLICT: "Trạng thái thành viên đã thay đổi",
   INTERNAL_ERROR: "Đã có lỗi xảy ra",
   PASSWORD_CHANGE_UNAVAILABLE: "Dịch vụ tạm gián đoạn, vui lòng yêu cầu mã mới",
+  PASSWORD_CHANGE_REQUIRED: "Vui lòng đổi mật khẩu tạm trước khi tiếp tục",
+  CANNOT_MODIFY_SELF:
+    "Không thể thực hiện thao tác này với chính tài khoản của bạn",
+  USER_HAS_ACTIVE_MEMBERSHIP:
+    "Người này vẫn còn trong lớp. Hãy gỡ khỏi lớp trước khi đổi vai trò",
+  INVALID_IMPORT_FILE:
+    "File không hợp lệ. Hãy dùng file mẫu .xlsx, tối đa 2 MB và 500 dòng",
 };
 
 export function getErrorMessage(error: unknown): string {

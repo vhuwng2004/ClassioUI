@@ -6,6 +6,7 @@ import {
   CheckIcon,
   MenuIcon,
   ShieldIcon,
+  UsersIcon,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +42,12 @@ const NAV_ITEMS: {
     icon: BookIcon,
     permission: PERMISSIONS.STUDENT_WORKSPACE_VIEW,
   },
+  {
+    label: "Người dùng",
+    href: "/staff/users",
+    icon: UsersIcon,
+    permission: PERMISSIONS.USER_VIEW,
+  },
 ];
 
 const UPCOMING_NAV: { label: string; icon: LucideIcon }[] = [
@@ -52,6 +59,7 @@ const UPCOMING_NAV: { label: string; icon: LucideIcon }[] = [
 const PAGE_TITLES: Record<string, string> = {
   "/staff": "Lớp học",
   "/student": "Lớp học",
+  "/staff/users": "Người dùng",
   "/profile": "Trang cá nhân",
 };
 
@@ -63,28 +71,32 @@ const DESKTOP_QUERY = "(min-width: 64rem)";
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { can } = useAuth();
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter(({ permission }) => can(permission));
+  // Mục khớp dài nhất mới sáng: `/staff/users` cũng bắt đầu bằng `/staff`.
+  const activeHref = items
+    .map(({ href }) => href)
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
 
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.filter(({ permission }) => can(permission)).map(
-        ({ label, href, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            aria-current={pathname === href ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium",
-              pathname === href || pathname.startsWith(`${href}/`)
-                ? "bg-info text-primary"
-                : "text-secondary-text hover:bg-muted",
-            )}
-          >
-            <Icon className="size-4.5" />
-            {label}
-          </Link>
-        ),
-      )}
+      {items.map(({ label, href, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          onClick={onNavigate}
+          aria-current={pathname === href ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium",
+            href === activeHref
+              ? "bg-info text-primary"
+              : "text-secondary-text hover:bg-muted",
+          )}
+        >
+          <Icon className="size-4.5" />
+          {label}
+        </Link>
+      ))}
       {UPCOMING_NAV.map(({ label, icon: Icon }) => (
         <span
           key={label}

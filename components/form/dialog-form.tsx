@@ -9,25 +9,30 @@ interface DialogFormProps {
   onSubmit: ComponentProps<"form">["onSubmit"];
   pending: boolean;
   submitLabel: string;
+  /** Thay nút Hủy, dùng khi hộp thoại không được đóng. */
+  secondaryAction?: ReactNode;
   children: ReactNode;
 }
 
-/** Thân form đặt trong `DialogContent`, luôn có nút Hủy và nút gửi ở chân. */
+/** Thân form đặt trong `DialogContent`, có nút Hủy và nút gửi ở chân. */
 export function DialogForm({
   onSubmit,
   pending,
   submitLabel,
+  secondaryAction,
   children,
 }: DialogFormProps) {
   return (
     <form noValidate onSubmit={onSubmit}>
       <DialogBody>{children}</DialogBody>
       <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline">
-            Hủy
-          </Button>
-        </DialogClose>
+        {secondaryAction ?? (
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Hủy
+            </Button>
+          </DialogClose>
+        )}
         <SubmitButton pending={pending} className="w-auto">
           {submitLabel}
         </SubmitButton>
